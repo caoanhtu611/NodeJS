@@ -66,6 +66,7 @@ export const deleteProduct = async (req, res) => {
         data,
       });
     }
+    console.log("object");
 
     return res.status(404).json({
       message: "Khong tim thay san pham!",
