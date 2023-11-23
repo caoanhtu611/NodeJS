@@ -1,10 +1,9 @@
-import axios from "axios";
-
-
+import Product from "../models/Product.js";
+import { validateProduct } from "../validation/productValid.js";
 
 export const getAllProduct = async (req, res) => {
   try {
-    const { data } = await axios.get("http://localhost:3000/products");
+    const data = await Product.find().populate("categories").exec();
 
     if (data && data.length) {
       return res.status(200).json({
@@ -26,7 +25,8 @@ export const getAllProduct = async (req, res) => {
 export const getDetailProduct = async (req, res) => {
   try {
     const id = req.params.id;
-    const { data } = await axios.get(`http://localhost:3000/products/${id}`);
+
+    const data = await Product.findById(id);
     if (data) {
       return res.status(200).json({
         message: "Lay san pham thanh cong!",
@@ -44,22 +44,37 @@ export const getDetailProduct = async (req, res) => {
   }
 };
 
-export const addProduct = async(req, res) => {
+export const addProduct = async (req, res) => {
   try {
     const body = req.body;
-    const {data} = await axios.post(`http://localhost:3000/products`, body);
+    const { error } = validateProduct.validate(body, { abortEarly: false });
+
+    if (error) {
+      const errors = error.details.map((err) => {
+        return err.message;
+      });
+
+      res.status(404).json({
+        message: errors.join(", "),
+      });
+    }
+    const data = await Product.create(body);
+    res.status(200).json({
+      message: "them san pham  thanh cong!",
+      data,
+    });
   } catch (error) {
     return res.status(500).json({
       message: "Loi server",
     });
   }
-}
+};
 
 export const deleteProduct = async (req, res) => {
   try {
     const id = req.params.id;
-    const { data } = await axios.delete(`http://localhost:3000/products/${id}`);
-    // fetch API o day
+
+    const data = await Product.findByIdAndDelete(id);
     if (data) {
       return res.status(200).json({
         message: "Xoas san pham thanh cong!",
@@ -80,16 +95,23 @@ export const deleteProduct = async (req, res) => {
 export const updateProduct = async (req, res) => {
   try {
     const id = req.params.id;
-    let name = req.body.name;
-    let price = req.body.price;
+    const body = req.body;
+    const { error } = validateProduct.validate(body, { abortEarly: false });
 
-    const { data } = await axios.put(`http://localhost:3000/products/${id}`, {
-      name: name,
-      price: price,
-    });
+    if (error) {
+      const errors = error.details.map((err) => {
+        return err.message;
+      });
+
+      return res.status(404).json({
+        message: errors.join(", "),
+      });
+    }
+
+    const data = await Product.findByIdAndUpdate(id, body, { new: true });
     if (data) {
       return res.status(200).json({
-        message: "sua thanh cong",
+        message: "Update thanh cong",
         datas: data,
       });
     }
@@ -103,3 +125,15 @@ export const updateProduct = async (req, res) => {
     });
   }
 };
+
+// export const getCategory = async (req, res) => {
+//   try {
+//    let data = await Category.find().populate("products").exec()
+
+//   res.status(200).json({data})
+//   } catch (error) {
+//     return res.status(500).json({
+//       message: "Loi server",
+//     });
+//   }
+// };
