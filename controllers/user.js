@@ -1,15 +1,114 @@
 import User from "../models/user.js";
-import { validateUser } from "../validation/userValid.js";
-import bcrypt, { hash } from "bcrypt";
+import { signUpValid, singInValid } from "../validation/userValid.js";
+import bcrypt from "bcrypt";
+
 export const signUp = async (req, res) => {
   try {
+    const { error } = signUpValid.validate(req.body, { abortEarly: false });
+    if (error) {
+      const errors = error.details.map((err) => err.message);
+      return res.status(400).json({
+        message: errors.join(", "),
+      });
+    }
+    const checkEmail = await User.findOne({ email: req.body.email });
+
+    if (checkEmail) {
+      return res.status(400).json({
+        message: "Email da duoc dang ki. Ban co muon dang nhap khong?",
+      });
+    }
+
+    // Ma hoa password bawng bcryptjs
+
+    const passwordHash = await bcryptjs.hash(req.body.password, 10);
+    if (!passwordHash) {
+      return res.status(400).json({
+        message: "ma hoa PassWord that bai.",
+      });
+    }
+    const user = {
+      username: req.body.username,
+      email: req.body.email,
+      password: passwordHash,
+    };
+    const data = await User.create(user);
+
+    if (!data) {
+      return res.status(400).json({
+        message: "Dang Ki That Bai.",
+      });
+    }
+    data.password = undefined;
+    return res.status(200).json({
+      message: "Dang ki thanh cong!",
+      data,
+    });
   } catch (error) {
     return res.status(500).json({
       message: "Đăng Kí Thất Bại!",
+      details: error.message,
     });
   }
 };
 
+export const signIn = async (req, res) => {
+  try {
+    /**
+     * Buoc 1: Validation values
+     * Buoc 2: Kiem tra email co ton tai trong he thong khong?
+     * Buoc 3: So sanh password
+     * Buoc 4: Tao token
+     * Buoc 5: Gui token cho nguoi dung
+     */
+    const error = singInValid.validate(req.body, { abortEarly: false });
+    if (error) {
+      const errors = error.details.map((err) => err.message);
+      return res.status(400).json({
+        message: errors,
+      });
+    }
+    // Buoc 2: Kiem tra email co ton tai trong he thong khong?
+    const checkEmail = await User.findOne({ email: req.body.email });
+    // Buoc 3: So sanh pass:
+    if (!checkEmail) {
+      return res.status(400).json({
+        message: "Email chua duoc dang ki!",
+      });
+    }
+    const checkPass = await bcryptjs.compare(
+      req.body.password,
+      checkEmail.password
+    );
+    console.log(checkPass);
+    if (!checkEmail) {
+      return res.status(400).json({
+        message: "Mat khau khong dung!",
+      });
+    }
+    // Buoc 4: Tao token
+    const token = jwt.sign({ _id: checkEmail._id }, "A Ton", {
+      expiresIn: "1d",
+    });
+    if (!token) {
+      return res.status(400).json({
+        message: "Tao Token that bai!",
+      });
+    }
+    // Buoc 5: Gui token cho nguoi dung
+    checkEmail.password = undefined;
+    return res.status(200).json({
+      message: "Dang nhap thanh cong!",
+      accessToken: token,
+      user: checkEmail,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      name: error.name,
+      message: error.message,
+    });
+  }
+};
 export const getAllUser = async (req, res) => {
   try {
     const data = await User.find();
@@ -61,7 +160,7 @@ export const createUser = async (req, res) => {
         return err.message;
       });
 
-      res.status(404).json({
+      res.status(400).json({
         message: errors.join(", "),
       });
     }

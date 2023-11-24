@@ -1,6 +1,6 @@
 import Joi from "joi";
 
-export const validateUser = Joi.object({
+export const signUpValid = Joi.object({
   username: Joi.string().min(3).max(30).required(),
   email: Joi.string().email({
     minDomainSegments: 2,
@@ -11,4 +11,9 @@ export const validateUser = Joi.object({
   confirmpass: Joi.string().required().valid(Joi.ref("password")),
   address: Joi.string().min(20),
   phonenumber: Joi.string(),
+});
+
+export const singInValid = Joi.object({
+  email: Joi.string().email().required(),
+  password: Joi.string().required().min(6).max(255),
 });
